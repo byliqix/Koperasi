@@ -157,18 +157,19 @@ func (s *PembayaranService) HitungTagihan(idJadwal int64, tanggalBayar time.Time
 	return s.hitungTagihan(s.db, jadwal, tanggalBayar)
 }
 
-func (s *PembayaranService) BayarAngsuran(idJadwal int64, tanggalBayar time.Time, nominal int64) (models.Pembayaran, error) {
+func (s *PembayaranService) BayarAngsuran(idJadwal int64, tanggalBayar time.Time, nominal int64) (models.HasilPembayaran, error) {
 	if idJadwal <= 0 {
-		return models.Pembayaran{}, ErrJadwalTidakValid
+		return models.HasilPembayaran{}, ErrJadwalTidakValid
 	}
 	if tanggalBayar.IsZero() {
-		return models.Pembayaran{}, ErrTanggalTidakValid
+		return models.HasilPembayaran{}, ErrTanggalTidakValid
 	}
 	if nominal <= 0 {
-		return models.Pembayaran{}, ErrNominalTidakValid
+		return models.HasilPembayaran{}, ErrNominalTidakValid
 	}
 
 	var pembayaran models.Pembayaran
+	var statusJadwal string
 	err := s.txRunner.RunInTx(func(tx repository.DBTX) error {
 		// Urutan kunci: jadwal lebih dulu, baru pinjaman.
 		jadwal, err := s.jadwalRepository.GetByIDForUpdate(tx, idJadwal)
@@ -214,6 +215,11 @@ func (s *PembayaranService) BayarAngsuran(idJadwal int64, tanggalBayar time.Time
 			return err
 		}
 
+		// Status akhir dihitung dari total terbayar setelah alokasi, sebelum penutupan pinjaman.
+		pokokTerbayar := (jadwal.Pokok - tagihan.SisaPokok) + pokok
+		jasaTerbayar := (jadwal.Jasa - tagihan.SisaJasa) + jasa
+		statusJadwal = HitungStatusJadwal(pokokTerbayar, jadwal.Pokok, jasaTerbayar, jadwal.Jasa)
+
 		// Perbarui status jadwal dulu agar hitungan jadwal belum lunas sudah mutlak.
 		if err := s.UpdateStatusJadwal(tx, idJadwal); err != nil {
 			return err
@@ -221,9 +227,9 @@ func (s *PembayaranService) BayarAngsuran(idJadwal int64, tanggalBayar time.Time
 		return s.CekDanTutupPinjaman(tx, jadwal.IDPinjaman)
 	})
 	if err != nil {
-		return models.Pembayaran{}, err
+		return models.HasilPembayaran{}, err
 	}
-	return pembayaran, nil
+	return models.HasilPembayaran{Pembayaran: pembayaran, StatusJadwal: statusJadwal}, nil
 }
 
 func (s *PembayaranService) UpdateStatusJadwal(db repository.DBTX, idJadwal int64) error {
