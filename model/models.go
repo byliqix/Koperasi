@@ -117,6 +117,12 @@ type Pembayaran struct {
 	PokokDibayar int64     `json:"pokok_dibayar"`
 }
 
+// HasilPembayaran menambahkan status jadwal ke response endpoint bayar.
+type HasilPembayaran struct {
+	Pembayaran
+	StatusJadwal string `json:"status_jadwal"`
+}
+
 type RincianPelunasan struct {
 	IDPinjaman   int64 `json:"id_pinjaman"`
 	SisaPokok    int64 `json:"sisa_pokok"`

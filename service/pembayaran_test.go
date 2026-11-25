@@ -399,6 +399,9 @@ func TestBayarAngsuran(t *testing.T) {
 			if got.TotalBayar != test.nominal || got.IDPembayaran != 77 {
 				t.Errorf("pembayaran = %+v", got)
 			}
+			if got.StatusJadwal != test.wantStatus {
+				t.Errorf("status_jadwal di response = %q, ingin %q", got.StatusJadwal, test.wantStatus)
+			}
 			if test.wantStatus == "Lunas" && jadwalRepo.lastStat != "Lunas" {
 				t.Errorf("status jadwal = %q, ingin Lunas", jadwalRepo.lastStat)
 			}
